@@ -21,7 +21,7 @@ module JSONTranslate
         attrs.each do |attr_name|
           # Remove methods that are not in the list
           (I18n.available_locales - locale_accessors).each do |locale|
-            self.class.remove_method :"#{attr_name}_#{locale}"
+            self.class.remove_method :"#{attr_name}_#{locale}" if self.respond_to? :"#{attr_name}_#{locale}"
           end
 
           # Define additional accessors

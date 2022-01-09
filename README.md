@@ -176,3 +176,85 @@ post.title_translations # => { en: '', fr: 'Bonjour' }
 post.title_en = nil
 post.title_translations # => { fr: 'Bonjour' }
 ```
+
+## Manually setting the available locales for translation for each model
+
+By default the value of `I18n.available_locales` is used to create the helper methods, e.g.:
+
+```ruby
+I18n.available_locales = [:en, :de]
+
+class Post < ActiveRecord::Base
+  translates :title
+end
+
+post.title_en = 'Hello'
+post.title_fr = 'Bonjour' # NoMethodError: undefined method `title_fr=' for #<Post:0x0000000000000000>
+```
+
+Sometimes your app might need to offer translation of content in locales that differ from the UI of your app. In such cases you can explicitly set the available locale accessors for each model you have by using the `locale_accessors` and passing either an array of symbols (if the same locales are to be available for each instance of the model) or a proc, when you want to have different locale accessors for each instance of the same model.
+
+Setting the locale via array:
+
+```ruby
+class Post < ActiveRecord::Base
+  translates :title, locale_accessors: [:pt, :fr]
+end
+```
+
+This allows you to define completely decoupled locales from your UI locales:
+
+```ruby
+I18n.available_locales = [:en, :de]
+
+class Blog < ActiveRecord::Base
+  has_many :posts
+end
+
+class Post < ActiveRecord::Base
+  belongs_to :blog
+  translates :title, locale_accessors: [:pt, :fr]
+end
+
+blog = Blog.new()
+post = blog.posts.build
+
+post.title_fr = 'Bonjour'
+post.title_en = 'Hallo' # NoMethodError: undefined method `title_en=' for #<Post:0x0000000000000000>
+```
+
+
+Setting the locale via a proc:
+
+```ruby
+class Post < ActiveRecord::Base
+  translates :title, locale_accessors: -> (post) { post.website.available_locales }
+end
+```
+
+This allows you to define per-instance locale helpers
+
+```ruby
+I18n.available_locales = [:en, :de]
+
+class Blog < ActiveRecord::Base
+  has_many :posts
+end
+
+class Post < ActiveRecord::Base
+  belongs_to :blog
+  translates :title, locale_accessors: -> (post) { post.website.available_locales }
+end
+
+blog1 = Blog.new(available_locales: [:it, :es])
+post1 = blog1.posts.build
+
+post1.title_it = 'Ciao'
+post1.title_en = 'Hallo' # NoMethodError: undefined method `title_en=' for #<Post:0x0000000000000000>
+
+blog2 = Blog.new(available_locales: [:fr, :pt])
+post2 = blog2.posts.build
+
+post2.title_fr = 'Bonjour'
+post2.title_it = 'Ciao' # NoMethodError: undefined method `title_it=' for #<Post:0x0000000000000000>
+```
