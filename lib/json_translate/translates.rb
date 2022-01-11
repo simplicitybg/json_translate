@@ -3,7 +3,7 @@ module JSONTranslate
     SUFFIX = "_translations".freeze
     MYSQL_ADAPTERS = %w[MySQL Mysql2 Mysql2Spatial]
 
-    def translates(*attrs, allow_blank: false)
+    def translates(*attrs, allow_blank: false, locale_accessors: I18n.available_locales)
       include InstanceMethods
 
       class_attribute :translated_attribute_names, :permitted_translated_attributes
@@ -13,7 +13,7 @@ module JSONTranslate
         *self.ancestors
           .select {|klass| klass.respond_to?(:permitted_translated_attributes) }
           .map(&:permitted_translated_attributes),
-        *attrs.product(I18n.available_locales)
+        *attrs.product(locale_accessors)
           .map { |attribute, locale| :"#{attribute}_#{locale}" }
       ].flatten.compact
 
@@ -26,7 +26,7 @@ module JSONTranslate
           write_json_translation(attr_name, value, allow_blank: allow_blank)
         end
 
-        I18n.available_locales.each do |locale|
+        locale_accessors.each do |locale|
           normalized_locale = locale.to_s.downcase.gsub(/[^a-z]/, '')
 
           define_method :"#{attr_name}_#{normalized_locale}" do |**params|
